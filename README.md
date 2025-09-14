@@ -3,7 +3,7 @@
 This project allows you to store financial filings into **ChromaDB** and ask questions about your data using an LLM-powered RAG pipeline.
 
 ---
-
+### Paste your CloudFlare and HuggingFace token in .env file
 ## 🚀 Setup Instructions (macOS)
 
 ### 1. Create Python Virtual Environment
