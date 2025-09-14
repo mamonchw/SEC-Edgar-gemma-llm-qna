@@ -7,6 +7,10 @@ from sentence_transformers import SentenceTransformer
 from build_embeddings import find_raw_text_files, read_files, stream_item_embeddings
 from vector_store import get_chroma_client, upsert_single, similarity_search, get_or_create_collection
 from ai_chat import chat_loop
+from dotenv import load_dotenv
+
+# Load variables from .env
+load_dotenv()
 
 MODEL_NAME = "google/embeddinggemma-300m"
 CHUNK_SIZE = 400
@@ -14,7 +18,7 @@ OVERLAP = 100
 PERSIST_DIR = "chroma_store"
 MANIFEST_FILE = Path("data/processed_files.json")
 MAX_SNIPPET_CHARS = 400  # how many characters of each chunk to show in chat output
-HF_TOKEN="HuggingFace_Token"
+HF_TOKEN=os.getenv("HF_TOKEN")
 
 def ensure_hf_login():
     token = os.getenv("HUGGINGFACEHUB_API_TOKEN",HF_TOKEN)
