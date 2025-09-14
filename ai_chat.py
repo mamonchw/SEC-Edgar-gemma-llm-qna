@@ -37,7 +37,7 @@ def _get_embed_model(model_name: str) -> SentenceTransformer:
 
 
 def _call_cloudflare_ai(messages: List[Dict]) -> str:
-    token = "CLOUDFLARE_TOKEM"
+    token = "CLOUDFLARE_TOKEN"
     if not token:
         return "[ERROR] CLOUDFLARE_API_TOKEN env var not set. Cannot call model."
     headers = {

@@ -1,68 +1,81 @@
 import os
-import re
+import time
 import requests
-from bs4 import BeautifulSoup
 from pathlib import Path
+from bs4 import BeautifulSoup
 
+# --- SEC requires polite headers ---
 HEADERS = {
     "User-Agent": "Chowdhury Sabir Morshed (mamonchw@gmail.com) - Financial QnA Project",
     "Accept-Encoding": "gzip, deflate",
     "Host": "www.sec.gov"
 }
 
-OUTDIR = Path("data/raw")
-OUTDIR.mkdir(parents=True, exist_ok=True)
+# --- Filings we want (HTML versions for easier parsing) ---
+FILINGS = {
+    "GOOGL": [
+        ("2024", "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000014/goog-20241231.htm"),
+        ("2023", "https://www.sec.gov/Archives/edgar/data/1652044/000165204424000022/goog-20231231.htm"),
+        ("2022", "https://www.sec.gov/Archives/edgar/data/1652044/000165204423000016/goog-20221231.htm"),
+    ],
+    "MSFT": [
+        ("2024", "https://www.sec.gov/Archives/edgar/data/789019/000095017024087843/msft-20240630.htm"),
+        ("2023", "https://www.sec.gov/Archives/edgar/data/789019/000095017023035122/msft-20230630.htm"),
+        ("2022", "https://www.sec.gov/Archives/edgar/data/789019/000156459022026876/msft-10k_20220630.htm"),
+    ],
+    "NVDA": [
+        ("2024", "https://www.sec.gov/Archives/edgar/data/1045810/000104581024000029/nvda-20240128.htm"),
+        ("2023", "https://www.sec.gov/Archives/edgar/data/1045810/000104581023000017/nvda-20230129.htm"),
+        ("2022", "https://www.sec.gov/Archives/edgar/data/1045810/000104581022000036/nvda-20220130.htm"),
+    ],
+}
 
+# --- Output directories ---
+HTML_DIR = Path("data/raw_html")
+TEXT_DIR = Path("data/raw")
 
-def download_main_filing(cik, accession_number, ticker, year):
-    """Download main 10-K HTML, extract text, and save"""
-    acc_no_nodash = accession_number.replace("-", "")
-    base_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_no_nodash}"
-    index_url = f"{base_url}/{accession_number}-index.html"
+HTML_DIR.mkdir(parents=True, exist_ok=True)
+TEXT_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"🔎 Fetching filing index for {ticker} {year} ...")
-    resp = requests.get(index_url, headers=HEADERS)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+def download_filings():
+    for ticker, docs in FILINGS.items():
+        for year, url in docs:
+            html_file = HTML_DIR / f"{ticker}_{year}.htm"
+            text_file = TEXT_DIR / f"{ticker}_{year}.txt"
 
-    # Find all document rows
-    candidates = []
-    for row in soup.select("table tr"):
-        cols = row.find_all("td")
-        if len(cols) >= 3:
-            file_link = cols[2].find("a")["href"] if cols[2].find("a") else None
-            if file_link and file_link.endswith(".htm"):
-                size_text = cols[-1].text.strip().replace(",", "")
+            # Skip if already converted
+            if text_file.exists():
+                print(f"✅ Already converted: {text_file}")
+                continue
+
+            # Download HTML if missing
+            if not html_file.exists():
+                print(f"⬇️ Downloading {ticker} {year} ...")
                 try:
-                    size = int(size_text.split()[0])
-                except:
-                    size = 0
-                candidates.append((file_link, size))
+                    r = requests.get(url, headers=HEADERS, timeout=30)
+                    r.raise_for_status()
+                    html_file.write_text(r.text, encoding="utf-8")
+                    print(f"   Saved HTML to {html_file}")
+                    time.sleep(0.5)  # polite delay
+                except Exception as e:
+                    print(f"   ❌ Failed {ticker} {year}: {e}")
+                    continue
 
-    # Pick the largest HTML file (most likely the full 10-K)
-    if not candidates:
-        raise Exception(f"No HTML candidates found for {ticker} {year}")
+            # --- Convert HTML → Text ---
+            try:
+                html_content = html_file.read_text(encoding="utf-8", errors="ignore")
+                soup = BeautifulSoup(html_content, "html.parser")
 
-    candidates.sort(key=lambda x: x[1], reverse=True)
-    link = candidates[0][0]  # largest file
-    filing_url = "https://www.sec.gov" + link
+                # Remove scripts/styles
+                for tag in soup(["script", "style", "head", "meta", "noscript"]):
+                    tag.decompose()
 
-    print(f"⬇️ Downloading main filing: {filing_url}")
-    resp = requests.get(filing_url, headers=HEADERS)
-    resp.raise_for_status()
-    filing_soup = BeautifulSoup(resp.text, "html.parser")
+                text = soup.get_text(separator="\n")
+                text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
-    # Remove script/style
-    for tag in filing_soup(["script", "style", "noscript"]):
-        tag.extract()
+                text_file.write_text(text, encoding="utf-8")
+                print(f"   ✅ Converted to text: {text_file}")
+            except Exception as e:
+                print(f"   ❌ Conversion failed for {ticker} {year}: {e}")
 
-    text = filing_soup.get_text(separator=" ")
-    text = re.sub(r"\s+", " ", text).strip()
-
-    outfile = OUTDIR / f"{ticker}_{year}.txt"
-    outfile.write_text(text, encoding="utf-8")
-    print(f"✅ Saved {outfile} ({len(text)} chars)")
-
-
-# Example: Microsoft 2024 (CIK 789019, accession 0000950170-24-087843)
-download_main_filing("789019", "0000950170-24-087843", "MSFT", "2024")
+download_filings()

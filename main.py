@@ -14,7 +14,7 @@ OVERLAP = 100
 PERSIST_DIR = "chroma_store"
 MANIFEST_FILE = Path("data/processed_files.json")
 MAX_SNIPPET_CHARS = 400  # how many characters of each chunk to show in chat output
-HF_TOKEN="HF_TOKEN"
+HF_TOKEN="HuggingFace_Token"
 
 def ensure_hf_login():
     token = os.getenv("HUGGINGFACEHUB_API_TOKEN",HF_TOKEN)
