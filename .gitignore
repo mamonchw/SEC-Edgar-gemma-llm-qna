@@ -1,0 +1,5 @@
+# Exclude processed files
+data/processed_files.json
+
+chroma_store/
+.venv

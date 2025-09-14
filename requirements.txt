@@ -1,0 +1,20 @@
+# Core data & downloading
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+
+# HTML -> Markdown conversion (primary + fallback)
+markdownify>=1.2.0
+html2text>=2025.4.15
+
+# Embeddings
+sentence-transformers>=3.0.0
+huggingface-hub>=0.24.0
+
+# Vector store
+chromadb>=0.5.0
+
+# Numeric / data utilities
+numpy>=1.26.0
+
+# Optional: progress bars, can be used later
+tqdm>=4.66.0
